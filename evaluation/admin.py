@@ -1,5 +1,20 @@
 from django.contrib import admin
+from django.urls import path
+from django.shortcuts import redirect
 from .models import DialectData, PlausibilityData, DialectEvaluation, PlausibilityEvaluation
+
+
+class CustomAdminSite(admin.AdminSite):
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('export/', lambda request: redirect('/export/'), name='export_redirect'),
+        ]
+        return custom_urls + urls
+
+
+# Override default admin site
+admin.site.__class__ = CustomAdminSite
 
 
 @admin.register(DialectData)
