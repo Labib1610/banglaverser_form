@@ -17,8 +17,8 @@
         </div>
 
         <div class="form-group">
-            <label for="evaluator-email">Your Email (Optional)</label>
-            <input type="email" id="evaluator-email" placeholder="Enter your email">
+            <label for="evaluator-email">Your Email (Required)</label>
+            <input type="email" id="evaluator-email" placeholder="Enter your email" required>
         </div>
 
         <div class="form-group">
@@ -76,6 +76,20 @@
 </div>
 
 <script>
+    // Get email from URL parameter and pre-fill
+    function getEmailFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('email');
+    }
+
+    // Pre-fill email if provided in URL
+    const emailFromURL = getEmailFromURL();
+    if (emailFromURL) {
+        document.getElementById('evaluator-email').value = emailFromURL;
+        document.getElementById('evaluator-email').readOnly = true;
+        document.getElementById('evaluator-email').style.backgroundColor = '#f0f0f0';
+    }
+
     // Global state
     let dialectData = [];
     let plausibilityData = [];
@@ -117,6 +131,20 @@
     document.getElementById('start-evaluation-btn').addEventListener('click', async function() {
         if (!selectedDialect) {
             showAlert('Please select a dialect first.');
+            return;
+        }
+
+        // Validate email is provided
+        const email = document.getElementById('evaluator-email').value.trim();
+        if (!email) {
+            showAlert('Email is required to submit an evaluation.');
+            return;
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showAlert('Please enter a valid email address.');
             return;
         }
 

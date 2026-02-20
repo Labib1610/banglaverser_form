@@ -20,10 +20,13 @@ A Django-based web application for evaluating AI-generated Bangla dialect transl
 
 ### Additional Features
 - **Session Tracking**: Each evaluation session gets a unique ID
-- **Optional User Info**: Name and email fields
+- **Email Required**: Email is required for submission and ensures unique responses
+- **One Submission Per Email**: Prevents duplicate submissions from the same evaluator
+- **URL Email Pre-filling**: Share personalized links with pre-filled emails
 - **Progress Indicators**: Visual progress bars for completion
 - **Responsive Design**: Modern, mobile-friendly UI
-- **Data Export**: Easy CSV/JSON export via Django admin
+- **One-Click Export**: Download data as JSON with admin download buttons
+- **Command Line Export**: Export data via Django management commands
 
 ---
 
@@ -232,15 +235,23 @@ banglaverser_form/
 
 ## 📤 Exporting Data
 
-### Method 1: Django Admin
-1. Go to http://127.0.0.1:8000/admin/
-2. Navigate to Dialect Evaluations or Plausibility Evaluations
-3. Select entries and use export action (may require django-import-export package)
+### Method 1: One-Click Download (Easiest)
+1. Login as admin at http://127.0.0.1:8000/admin/
+2. Go to http://127.0.0.1:8000/export/
+3. Click the download button for the data you want:
+   - **Download All Data**: Everything in one JSON file
+   - **Download Dialect Data**: All dialect translation pairs
+   - **Download Plausibility Data**: All MCQ questions
+   - **Download Dialect Evaluations**: All user ratings for dialects
+   - **Download Plausibility Evaluations**: All user ratings for MCQs
 
 ### Method 2: Django Management Command
 
 ```bash
-# Export to JSON
+# Export all evaluation data
+python manage.py dumpdata evaluation --indent 2 > evaluation_data.json
+
+# Export specific data
 python manage.py dumpdata evaluation.DialectEvaluation --indent 2 > dialect_results.json
 python manage.py dumpdata evaluation.PlausibilityEvaluation --indent 2 > plausibility_results.json
 ```
@@ -269,6 +280,54 @@ with open('dialect_evaluations.csv', 'w', newline='', encoding='utf-8') as f:
             eval.created_at
         ])
 ```
+
+---
+
+## 👥 Sharing with Evaluators
+
+### Email Pre-filling Feature
+
+You can share personalized links with evaluators that automatically pre-fill their email address:
+
+**URL Format:**
+```
+http://your-domain.com/?email=evaluator@example.com
+```
+
+**Benefits:**
+- Email field is auto-filled and locked (read-only)
+- Prevents typos in email addresses
+- Ensures unique identification
+- Each email can only submit once
+
+**Example:**
+```bash
+# For local testing
+http://127.0.0.1:8000/?email=john@example.com
+
+# For production
+https://your-app.pythonanywhere.com/?email=researcher@university.edu
+```
+
+**Creating Multiple Links:**
+If you have a list of evaluators, you can create personalized links:
+```python
+evaluators = [
+    "alice@example.com",
+    "bob@example.com",
+    "charlie@example.com"
+]
+
+base_url = "https://your-app.pythonanywhere.com"
+for email in evaluators:
+    print(f"{base_url}/?email={email}")
+```
+
+**Important Notes:**
+- Each email address can only submit ONE evaluation
+- Attempting to submit again with the same email will show an error
+- The email field becomes read-only when pre-filled from URL
+- Evaluators can still manually enter email if they access the base URL
 
 ---
 

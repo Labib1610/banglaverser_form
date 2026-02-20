@@ -360,6 +360,80 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASSWORD')
 
 ---
 
+## � Sharing with Evaluators (Email Pre-filling)
+
+After deployment, you can share personalized evaluation links with pre-filled email addresses.
+
+### Creating Personalized Links
+
+**Format:**
+```
+https://your-deployed-domain.com/?email=evaluator@example.com
+```
+
+**Examples:**
+```
+# PythonAnywhere
+https://yourusername.pythonanywhere.com/?email=john.doe@university.edu
+
+# Heroku
+https://your-app.herokuapp.com/?email=researcher@institute.org
+
+# Custom domain
+https://banglaverse-eval.com/?email=participant@email.com
+```
+
+### Bulk Link Generation
+
+Create a Python script to generate links for multiple evaluators:
+
+```python
+# generate_links.py
+evaluators = [
+    {"name": "Dr. Alice", "email": "alice@university.edu"},
+    {"name": "Dr. Bob", "email": "bob@research.org"},
+    {"name": "Prof. Charlie", "email": "charlie@institute.edu"},
+]
+
+base_url = "https://yourusername.pythonanywhere.com"
+
+print("Personalized Evaluation Links:\n")
+for person in evaluators:
+    link = f"{base_url}/?email={person['email']}"
+    print(f"{person['name']}: {link}")
+```
+
+### Email Template for Invitations
+
+```
+Subject: BanglaVerse Dialect Evaluation - Your Personal Link
+
+Dear [Evaluator Name],
+
+You are invited to participate in the BanglaVerse dialect translation evaluation study.
+
+Your personalized evaluation link:
+[YOUR_DEPLOYED_URL]/?email=[EVALUATOR_EMAIL]
+
+This link is unique to you and will pre-fill your email address. You can submit only ONE evaluation.
+
+The evaluation takes approximately 15-20 minutes to complete.
+
+Thank you for your contribution!
+
+Best regards,
+Research Team
+```
+
+### Important Notes
+
+- **One Submission Per Email**: Each email address can only submit once
+- **Email Validation**: The system checks for duplicate submissions
+- **Read-Only Email**: Pre-filled emails are locked and cannot be changed
+- **Security**: Email addresses are visible in URL (use HTTPS in production)
+
+---
+
 ## 🔍 Monitoring and Analytics
 
 ### Option 1: Sentry (Error Tracking)
@@ -466,11 +540,24 @@ If you encounter issues:
 - [ ] Evaluation form loads correctly
 - [ ] Dialect selection works
 - [ ] Randomization works
+- [ ] Email pre-filling works (test with `?email=test@example.com`)
+- [ ] Duplicate email prevention works (try submitting twice)
 - [ ] Form submission works
 - [ ] Thank you page displays
 - [ ] Data is saved to database
+- [ ] Export page works (`/export/`)
+- [ ] Download buttons generate JSON files
 - [ ] SSL/HTTPS is enabled
 - [ ] Custom domain configured (if applicable)
+
+## 📊 After Data Collection
+
+Once evaluators have submitted responses:
+
+1. **Login as admin**: `https://your-domain.com/admin/`
+2. **Go to export page**: `https://your-domain.com/export/`
+3. **Download data**: Click download buttons for JSON exports
+4. **Analyze data**: Use Python, pandas, or other tools for analysis
 
 ---
 

@@ -1,7 +1,8 @@
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from django.core import serializers
 import json
 import random
 import uuid
@@ -77,6 +78,16 @@ def submit_evaluation(request):
         evaluator_name = data.get('evaluator_name', '')
         evaluator_email = data.get('evaluator_email', '')
         
+        # Check if this email has already submitted
+        if evaluator_email:
+            existing_dialect = DialectEvaluation.objects.filter(evaluator_email=evaluator_email).exists()
+            existing_plaus = PlausibilityEvaluation.objects.filter(evaluator_email=evaluator_email).exists()
+            if existing_dialect or existing_plaus:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'This email has already submitted an evaluation. Only one submission per email is allowed.'
+                }, status=400)
+        
         # Save dialect evaluations
         dialect_evaluations = data.get('dialect_evaluations', [])
         for eval_data in dialect_evaluations:
@@ -126,7 +137,43 @@ def thank_you(request):
 
 def export_data(request):
     """
-    Simple view to display export instructions (admin only).
+    Export evaluation data as JSON file for download.
+    """
+    if not request.user.is_staff:
+        return redirect('home')
+    
+    export_type = request.GET.get('type', 'all')
+    
+    if export_type == 'dialect_data':
+        data = serializers.serialize('json', DialectData.objects.all(), indent=2)
+        filename = 'dialect_data.json'
+    elif export_type == 'plausibility_data':
+        data = serializers.serialize('json', PlausibilityData.objects.all(), indent=2)
+        filename = 'plausibility_data.json'
+    elif export_type == 'dialect_evaluations':
+        data = serializers.serialize('json', DialectEvaluation.objects.all(), indent=2)
+        filename = 'dialect_evaluations.json'
+    elif export_type == 'plausibility_evaluations':
+        data = serializers.serialize('json', PlausibilityEvaluation.objects.all(), indent=2)
+        filename = 'plausibility_evaluations.json'
+    else:  # all
+        all_data = {
+            'dialect_data': json.loads(serializers.serialize('json', DialectData.objects.all())),
+            'plausibility_data': json.loads(serializers.serialize('json', PlausibilityData.objects.all())),
+            'dialect_evaluations': json.loads(serializers.serialize('json', DialectEvaluation.objects.all())),
+            'plausibility_evaluations': json.loads(serializers.serialize('json', PlausibilityEvaluation.objects.all())),
+        }
+        data = json.dumps(all_data, indent=2)
+        filename = 'all_evaluation_data.json'
+    
+    response = HttpResponse(data, content_type='application/json')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+def export_page(request):
+    """
+    Export page with download buttons.
     """
     if not request.user.is_staff:
         return redirect('home')

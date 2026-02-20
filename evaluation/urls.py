@@ -9,5 +9,6 @@ urlpatterns = [
     path('api/get-plausibility-data/', views.get_plausibility_data, name='get_plausibility_data'),
     path('api/submit-evaluation/', views.submit_evaluation, name='submit_evaluation'),
     path('thank-you/', views.thank_you, name='thank_you'),
-    path('export/', views.export_data, name='export'),
+    path('export/', views.export_page, name='export_page'),
+    path('export/download/', views.export_data, name='export_download'),
 ]
