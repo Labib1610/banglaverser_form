@@ -1,0 +1,56 @@
+{% extends "evaluation/base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>📊 Export Evaluation Data</h1>
+    <p class="subtitle">Instructions for exporting collected evaluation data</p>
+
+    <div style="background: #f9f9f9; padding: 30px; border-radius: 10px; margin: 30px 0;">
+        <h2 style="color: #667eea; margin-bottom: 20px;">Export via Django Admin</h2>
+        
+        <ol style="line-height: 2; color: #555;">
+            <li>Go to the <a href="/admin/" style="color: #667eea;">Django Admin Panel</a></li>
+            <li>Navigate to <strong>Evaluation</strong> section</li>
+            <li>Click on <strong>Dialect Evaluations</strong> or <strong>Plausibility Evaluations</strong></li>
+            <li>Select the entries you want to export</li>
+            <li>Use the export functionality to download as CSV/Excel</li>
+        </ol>
+    </div>
+
+    <div style="background: #fff9e6; padding: 30px; border-radius: 10px; margin: 30px 0;">
+        <h2 style="color: #f39c12; margin-bottom: 20px;">Export via Command Line</h2>
+        
+        <p style="color: #555; margin-bottom: 15px;">Run these commands in your terminal:</p>
+        
+        <div style="background: #2d2d2d; color: #f8f8f2; padding: 20px; border-radius: 8px; font-family: 'Courier New', monospace; margin: 15px 0;">
+            <code>
+# Export dialect evaluations to CSV<br>
+python manage.py dumpdata evaluation.DialectEvaluation --format json > dialect_evaluations.json<br>
+<br>
+# Export plausibility evaluations to CSV<br>
+python manage.py dumpdata evaluation.PlausibilityEvaluation --format json > plausibility_evaluations.json
+            </code>
+        </div>
+
+        <p style="color: #555; margin-top: 20px;">
+            Or use Django shell to create custom CSV exports with specific fields.
+        </p>
+    </div>
+
+    <div style="background: #e8f5e9; padding: 30px; border-radius: 10px; margin: 30px 0;">
+        <h2 style="color: #28a745; margin-bottom: 20px;">💡 Pro Tip</h2>
+        
+        <p style="color: #555; line-height: 1.8;">
+            For advanced data analysis, you can access the SQLite database directly at 
+            <code style="background: white; padding: 4px 8px; border-radius: 4px;">db.sqlite3</code> 
+            and use SQL queries or import it into pandas for analysis.
+        </p>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px;">
+        <a href="/" class="btn btn-primary" style="text-decoration: none; display: inline-block;">
+            ← Back to Home
+        </a>
+    </div>
+</div>
+{% endblock %}

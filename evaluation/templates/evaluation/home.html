@@ -1,0 +1,412 @@
+{% extends "evaluation/base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>🇧🇩 BanglaVerse Evaluation Form</h1>
+    <p class="subtitle">Help us evaluate AI-generated Bangla dialect translations and MCQ options</p>
+
+    <div id="alert-container"></div>
+
+    <!-- Evaluator Information Section -->
+    <div id="evaluator-info-section">
+        <div class="section-title">📝 Evaluator Information</div>
+        
+        <div class="form-group">
+            <label for="evaluator-name">Your Name (Optional)</label>
+            <input type="text" id="evaluator-name" placeholder="Enter your name">
+        </div>
+
+        <div class="form-group">
+            <label for="evaluator-email">Your Email (Optional)</label>
+            <input type="email" id="evaluator-email" placeholder="Enter your email">
+        </div>
+
+        <div class="form-group">
+            <label for="dialect-select">Select Dialect to Evaluate *</label>
+            <select id="dialect-select">
+                <option value="">-- Choose a Dialect --</option>
+                {% for code, name in dialects %}
+                <option value="{{ code }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button class="btn btn-primary" id="start-evaluation-btn" disabled>Start Evaluation</button>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="loading-section" class="hidden">
+        <div class="loading">⏳ Loading evaluation data...</div>
+    </div>
+
+    <!-- Dialect Evaluation Section -->
+    <div id="dialect-evaluation-section" class="hidden">
+        <div class="section-title">🗣️ Dialect Translation Evaluation</div>
+        <p style="color: #666; margin-bottom: 20px;">
+            Please rate the following AI-generated dialect translations on a scale of 1-5 for accuracy and naturalness.
+        </p>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="dialect-progress"></div>
+        </div>
+        
+        <div id="dialect-items-container"></div>
+    </div>
+
+    <!-- Plausibility Evaluation Section -->
+    <div id="plausibility-evaluation-section" class="hidden">
+        <div class="section-title">📚 MCQ Distractor Plausibility Evaluation</div>
+        <p style="color: #666; margin-bottom: 20px;">
+            Please rate how plausible each wrong option is (1 = Not plausible at all, 5 = Highly plausible/confusing).
+        </p>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="plausibility-progress"></div>
+        </div>
+        
+        <div id="plausibility-items-container"></div>
+    </div>
+
+    <!-- Submit Button -->
+    <div id="submit-section" class="hidden" style="text-align: center; margin-top: 30px;">
+        <button class="btn btn-primary" id="submit-btn" style="font-size: 1.2em; padding: 15px 50px;">
+            Submit Evaluation
+        </button>
+    </div>
+</div>
+
+<script>
+    // Global state
+    let dialectData = [];
+    let plausibilityData = [];
+    let selectedDialect = '';
+    const sessionId = generateUUID();
+
+    // Generate UUID for session tracking
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    // Show alert message
+    function showAlert(message, type = 'error') {
+        const alertContainer = document.getElementById('alert-container');
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.textContent = message;
+        alertContainer.innerHTML = '';
+        alertContainer.appendChild(alertDiv);
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 5000);
+    }
+
+    // Enable/disable start button based on dialect selection
+    document.getElementById('dialect-select').addEventListener('change', function() {
+        const btn = document.getElementById('start-evaluation-btn');
+        btn.disabled = !this.value;
+        selectedDialect = this.value;
+    });
+
+    // Start evaluation button click handler
+    document.getElementById('start-evaluation-btn').addEventListener('click', async function() {
+        if (!selectedDialect) {
+            showAlert('Please select a dialect first.');
+            return;
+        }
+
+        // Hide info section and show loading
+        document.getElementById('evaluator-info-section').classList.add('hidden');
+        document.getElementById('loading-section').classList.remove('hidden');
+
+        try {
+            // Fetch dialect data
+            const dialectResponse = await fetch(`/api/get-dialect-data/?dialect=${selectedDialect}`);
+            const dialectResult = await dialectResponse.json();
+            
+            if (!dialectResponse.ok) {
+                throw new Error(dialectResult.error || 'Failed to fetch dialect data');
+            }
+            
+            dialectData = dialectResult.data;
+
+            // Fetch plausibility data
+            const plausibilityResponse = await fetch('/api/get-plausibility-data/');
+            const plausibilityResult = await plausibilityResponse.json();
+            
+            if (!plausibilityResponse.ok) {
+                throw new Error(plausibilityResult.error || 'Failed to fetch plausibility data');
+            }
+            
+            plausibilityData = plausibilityResult.data;
+
+            // Hide loading and show evaluation sections
+            document.getElementById('loading-section').classList.add('hidden');
+            renderDialectEvaluation();
+            renderPlausibilityEvaluation();
+            document.getElementById('submit-section').classList.remove('hidden');
+
+        } catch (error) {
+            document.getElementById('loading-section').classList.add('hidden');
+            document.getElementById('evaluator-info-section').classList.remove('hidden');
+            showAlert(error.message);
+        }
+    });
+
+    // Render dialect evaluation items
+    function renderDialectEvaluation() {
+        const container = document.getElementById('dialect-items-container');
+        container.innerHTML = '';
+
+        dialectData.forEach((item, index) => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'evaluation-item';
+            itemDiv.innerHTML = `
+                <h3>Dialect Pair ${index + 1} of ${dialectData.length}</h3>
+                
+                <div class="text-display">
+                    <div class="text-label">📄 Original Standard Text:</div>
+                    <div class="text-content">${item.original_standard_text}</div>
+                </div>
+                
+                <div class="text-display">
+                    <div class="text-label">🔄 AI-Generated Dialect Translation:</div>
+                    <div class="text-content">${item.ai_generated_dialect_text}</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Accuracy Rating: How accurate is this translation? *</label>
+                    <div class="rating-group">
+                        ${[1, 2, 3, 4, 5].map(rating => `
+                            <div class="rating-option">
+                                <input type="radio" id="dialect-${item.id}-accuracy-${rating}" 
+                                       name="dialect-${item.id}-accuracy" value="${rating}" required>
+                                <label for="dialect-${item.id}-accuracy-${rating}">${rating}</label>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <small style="color: #666;">1 = Poor, 5 = Excellent</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Naturalness Rating: How natural does it sound? *</label>
+                    <div class="rating-group">
+                        ${[1, 2, 3, 4, 5].map(rating => `
+                            <div class="rating-option">
+                                <input type="radio" id="dialect-${item.id}-naturalness-${rating}" 
+                                       name="dialect-${item.id}-naturalness" value="${rating}" required>
+                                <label for="dialect-${item.id}-naturalness-${rating}">${rating}</label>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <small style="color: #666;">1 = Unnatural, 5 = Very Natural</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="dialect-${item.id}-comments">Comments (Optional):</label>
+                    <textarea id="dialect-${item.id}-comments" rows="2" 
+                              placeholder="Any additional feedback..."></textarea>
+                </div>
+            `;
+            container.appendChild(itemDiv);
+        });
+
+        document.getElementById('dialect-evaluation-section').classList.remove('hidden');
+        updateDialectProgress();
+
+        // Add change listeners to update progress
+        container.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', updateDialectProgress);
+        });
+    }
+
+    // Render plausibility evaluation items
+    function renderPlausibilityEvaluation() {
+        const container = document.getElementById('plausibility-items-container');
+        container.innerHTML = '';
+
+        plausibilityData.forEach((item, index) => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'evaluation-item';
+            itemDiv.innerHTML = `
+                <h3>MCQ ${index + 1} of ${plausibilityData.length}</h3>
+                
+                <div class="text-display">
+                    <div class="text-label">❓ Question:</div>
+                    <div class="text-content">${item.question}</div>
+                </div>
+                
+                <div class="text-display" style="border-left-color: #28a745;">
+                    <div class="text-label">✓ Correct Answer:</div>
+                    <div class="text-content">${item.correct_answer}</div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <h4 style="color: #c33; margin-bottom: 15px;">Evaluate Wrong Options (Distractors):</h4>
+                    
+                    ${[1, 2, 3].map(optNum => `
+                        <div class="form-group">
+                            <div class="text-display" style="border-left-color: #dc3545;">
+                                <div class="text-label">❌ Wrong Option ${optNum}:</div>
+                                <div class="text-content">${item['wrong_option_' + optNum]}</div>
+                            </div>
+                            
+                            <label>Plausibility Rating: How plausible/confusing is this wrong option? *</label>
+                            <div class="rating-group">
+                                ${[1, 2, 3, 4, 5].map(rating => `
+                                    <div class="rating-option">
+                                        <input type="radio" id="plaus-${item.id}-opt${optNum}-${rating}" 
+                                               name="plaus-${item.id}-opt${optNum}" value="${rating}" required>
+                                        <label for="plaus-${item.id}-opt${optNum}-${rating}">${rating}</label>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <small style="color: #666;">1 = Not plausible, 5 = Highly plausible</small>
+                        </div>
+                    `).join('')}
+
+                    <div class="form-group">
+                        <label for="plaus-${item.id}-comments">Comments (Optional):</label>
+                        <textarea id="plaus-${item.id}-comments" rows="2" 
+                                  placeholder="Any additional feedback..."></textarea>
+                    </div>
+                </div>
+            `;
+            container.appendChild(itemDiv);
+        });
+
+        document.getElementById('plausibility-evaluation-section').classList.remove('hidden');
+        updatePlausibilityProgress();
+
+        // Add change listeners to update progress
+        container.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', updatePlausibilityProgress);
+        });
+    }
+
+    // Update dialect evaluation progress
+    function updateDialectProgress() {
+        const totalRequired = dialectData.length * 2; // accuracy + naturalness
+        let completed = 0;
+
+        dialectData.forEach(item => {
+            if (document.querySelector(`input[name="dialect-${item.id}-accuracy"]:checked`)) completed++;
+            if (document.querySelector(`input[name="dialect-${item.id}-naturalness"]:checked`)) completed++;
+        });
+
+        const percentage = (completed / totalRequired) * 100;
+        document.getElementById('dialect-progress').style.width = percentage + '%';
+    }
+
+    // Update plausibility evaluation progress
+    function updatePlausibilityProgress() {
+        const totalRequired = plausibilityData.length * 3; // 3 options per MCQ
+        let completed = 0;
+
+        plausibilityData.forEach(item => {
+            for (let i = 1; i <= 3; i++) {
+                if (document.querySelector(`input[name="plaus-${item.id}-opt${i}"]:checked`)) completed++;
+            }
+        });
+
+        const percentage = (completed / totalRequired) * 100;
+        document.getElementById('plausibility-progress').style.width = percentage + '%';
+    }
+
+    // Submit evaluation
+    document.getElementById('submit-btn').addEventListener('click', async function() {
+        const submitBtn = this;
+        
+        // Validate all required fields
+        const dialectEvaluations = [];
+        let allDialectValid = true;
+
+        dialectData.forEach(item => {
+            const accuracy = document.querySelector(`input[name="dialect-${item.id}-accuracy"]:checked`);
+            const naturalness = document.querySelector(`input[name="dialect-${item.id}-naturalness"]:checked`);
+            
+            if (!accuracy || !naturalness) {
+                allDialectValid = false;
+                return;
+            }
+
+            dialectEvaluations.push({
+                dialect_data_id: item.id,
+                accuracy_rating: parseInt(accuracy.value),
+                naturalness_rating: parseInt(naturalness.value),
+                comments: document.getElementById(`dialect-${item.id}-comments`).value
+            });
+        });
+
+        if (!allDialectValid) {
+            showAlert('Please complete all dialect evaluation ratings before submitting.');
+            return;
+        }
+
+        const plausibilityEvaluations = [];
+        let allPlausValid = true;
+
+        plausibilityData.forEach(item => {
+            const opt1 = document.querySelector(`input[name="plaus-${item.id}-opt1"]:checked`);
+            const opt2 = document.querySelector(`input[name="plaus-${item.id}-opt2"]:checked`);
+            const opt3 = document.querySelector(`input[name="plaus-${item.id}-opt3"]:checked`);
+            
+            if (!opt1 || !opt2 || !opt3) {
+                allPlausValid = false;
+                return;
+            }
+
+            plausibilityEvaluations.push({
+                plausibility_data_id: item.id,
+                option_1_plausibility: parseInt(opt1.value),
+                option_2_plausibility: parseInt(opt2.value),
+                option_3_plausibility: parseInt(opt3.value),
+                comments: document.getElementById(`plaus-${item.id}-comments`).value
+            });
+        });
+
+        if (!allPlausValid) {
+            showAlert('Please complete all plausibility evaluation ratings before submitting.');
+            return;
+        }
+
+        // Disable submit button
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+
+        try {
+            const response = await fetch('/api/submit-evaluation/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    evaluator_name: document.getElementById('evaluator-name').value,
+                    evaluator_email: document.getElementById('evaluator-email').value,
+                    dialect_evaluations: dialectEvaluations,
+                    plausibility_evaluations: plausibilityEvaluations
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                window.location.href = '/thank-you/';
+            } else {
+                throw new Error(result.error || 'Failed to submit evaluation');
+            }
+
+        } catch (error) {
+            showAlert(error.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Evaluation';
+        }
+    });
+</script>
+{% endblock %}
